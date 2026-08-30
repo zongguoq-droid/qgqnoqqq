@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>1024</width><height>600</height></rect>
+  </property>
+  <property name="windowTitle">
+   <string>智能车载终端</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QTabWidget" name="tabWidget">
+    <property name="geometry">
+     <rect><x>0</x><y>0</y><width>1024</width><height>570</height></rect>
+    </property>
+    <widget class="QWidget" name="tabDashboard">
+     <attribute name="title"><string>仪表盘</string></attribute>
+    </widget>
+    <widget class="QWidget" name="tabDVR">
+     <attribute name="title"><string>DVR</string></attribute>
+     <widget class="QLabel" name="dvrPreview">
+      <property name="geometry"><rect><x>20</x><y>20</y><width>640</width><height>360</height></rect></property>
+      <property name="text"><string>摄像头预览</string></property>
+      <property name="alignment"><set>Qt::AlignCenter</set></property>
+      <property name="styleSheet"><string>background:#222; color:#888; border:2px solid #555; font-size:24px;</string></property>
+     </widget>
+     <widget class="QLabel" name="dvrDuration">
+      <property name="geometry"><rect><x>20</x><y>385</y><width>200</width><height>30</height></rect></property>
+      <property name="text"><string>⏱ 00:00</string></property>
+      <property name="styleSheet"><string>font-size:20px; font-weight:bold; color:#fff; background:#333; border-radius:4px; padding:4px 12px;</string></property>
+      <property name="alignment"><set>Qt::AlignCenter</set></property>
+     </widget>
+     <widget class="QPushButton" name="btnRecord">
+      <property name="geometry"><rect><x>20</x><y>425</y><width>110</width><height>50</height></rect></property>
+      <property name="text"><string>开始录像</string></property>
+      <property name="styleSheet"><string>background:#F44336; color:white; font-size:16px; font-weight:bold; border-radius:6px;</string></property>
+     </widget>
+     <widget class="QPushButton" name="btnPause">
+      <property name="geometry"><rect><x>145</x><y>425</y><width>110</width><height>50</height></rect></property>
+      <property name="text"><string>暂停</string></property>
+      <property name="enabled"><bool>false</bool></property>
+      <property name="styleSheet"><string>background:#FF9800; color:white; font-size:16px; font-weight:bold; border-radius:6px;</string></property>
+     </widget>
+     <widget class="QPushButton" name="btnStop">
+      <property name="geometry"><rect><x>270</x><y>425</y><width>110</width><height>50</height></rect></property>
+      <property name="text"><string>停止</string></property>
+      <property name="enabled"><bool>false</bool></property>
+      <property name="styleSheet"><string>background:#666; color:white; font-size:16px; font-weight:bold; border-radius:6px;</string></property>
+     </widget>
+     <widget class="QPushButton" name="btnSnap">
+      <property name="geometry"><rect><x>395</x><y>425</y><width>110</width><height>50</height></rect></property>
+      <property name="text"><string>拍照</string></property>
+      <property name="styleSheet"><string>background:#2196F3; color:white; font-size:16px; font-weight:bold; border-radius:6px;</string></property>
+     </widget>
+     <widget class="QLabel" name="dvrStatus">
+      <property name="geometry"><rect><x>20</x><y>485</y><width>500</width><height>30</height></rect></property>
+      <property name="text"><string>状态: 待机  |  录像保存: /record/</string></property>
+      <property name="styleSheet"><string>color:#888; font-size:13px;</string></property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="tabMusic">
+     <attribute name="title"><string>音乐</string></attribute>
+     <widget class="QLabel" name="musicTitle">
+      <property name="geometry"><rect><x>50</x><y>40</y><width>900</width><height>60</height></rect></property>
+      <property name="text"><string>未播放</string></property>
+      <property name="alignment"><set>Qt::AlignCenter</set></property>
+      <property name="styleSheet"><string>font-size:28px; font-weight:bold;</string></property>
+     </widget>
+     <widget class="QPushButton" name="btnPlay">
+      <property name="geometry"><rect><x>200</x><y>180</y><width>120</width><height>60</height></rect></property>
+      <property name="text"><string>播放</string></property>
+      <property name="styleSheet"><string>background:#4CAF50; color:white; font-size:18px; font-weight:bold; border-radius:8px;</string></property>
+     </widget>
+     <widget class="QPushButton" name="btnPauseMusic">
+      <property name="geometry"><rect><x>350</x><y>180</y><width>120</width><height>60</height></rect></property>
+      <property name="text"><string>暂停</string></property>
+      <property name="styleSheet"><string>background:#FF9800; color:white; font-size:18px; font-weight:bold; border-radius:8px;</string></property>
+     </widget>
+     <widget class="QLabel" name="labelVol">
+      <property name="geometry"><rect><x>200</x><y>280</y><width>60</width><height>30</height></rect></property>
+      <property name="text"><string>音量</string></property>
+     </widget>
+     <widget class="QSlider" name="volSlider">
+      <property name="geometry"><rect><x>270</x><y>280</y><width>300</width><height>30</height></rect></property>
+      <property name="orientation"><enum>Qt::Horizontal</enum></property>
+      <property name="minimum"><number>0</number></property>
+      <property name="maximum"><number>100</number></property>
+      <property name="value"><number>70</number></property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="tabCAN">
+     <attribute name="title"><string>CAN</string></attribute>
+     <widget class="QTextEdit" name="canLog">
+      <property name="geometry"><rect><x>10</x><y>10</y><width>980</width><height>400</height></rect></property>
+      <property name="readOnly"><bool>true</bool></property>
+      <property name="styleSheet"><string>background:#1a1a2e; color:#00ff88; font-family:monospace; font-size:14px;</string></property>
+     </widget>
+     <widget class="QLineEdit" name="canData">
+      <property name="geometry"><rect><x>200</x><y>430</y><width>200</width><height>36</height></rect></property>
+      <property name="text"><string>AA BB CC DD</string></property>
+     </widget>
+     <widget class="QPushButton" name="btnCanSend">
+      <property name="geometry"><rect><x>420</x><y>430</y><width>120</width><height>36</height></rect></property>
+      <property name="text"><string>发送CAN</string></property>
+      <property name="styleSheet"><string>background:#FF9800; color:white; font-weight:bold; border-radius:6px;</string></property>
+     </widget>
+     <widget class="QSpinBox" name="canId">
+      <property name="geometry"><rect><x>70</x><y>430</y><width>100</width><height>36</height></rect></property>
+      <property name="prefix"><string>0x</string></property>
+      <property name="displayIntegerBase"><number>16</number></property>
+      <property name="maximum"><number>2047</number></property>
+      <property name="value"><number>291</number></property>
+     </widget>
+     <widget class="QLabel" name="labelCanId">
+      <property name="geometry"><rect><x>20</x><y>435</y><width>40</width><height>30</height></rect></property>
+      <property name="text"><string>ID:</string></property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="tabSensor">
+     <attribute name="title"><string>温湿度</string></attribute>
+     <widget class="QLabel" name="sensorTemp">
+      <property name="geometry"><rect><x>150</x><y>60</y><width>300</width><height>120</height></rect></property>
+      <property name="text"><string>--°C</string></property>
+      <property name="alignment"><set>Qt::AlignCenter</set></property>
+      <property name="styleSheet"><string>font-size:72px; font-weight:bold; color:#FF9800;</string></property>
+     </widget>
+     <widget class="QLabel" name="sensorHum">
+      <property name="geometry"><rect><x>150</x><y>200</y><width>300</width><height>120</height></rect></property>
+      <property name="text"><string>--%</string></property>
+      <property name="alignment"><set>Qt::AlignCenter</set></property>
+      <property name="styleSheet"><string>font-size:72px; font-weight:bold; color:#00BCD4;</string></property>
+     </widget>
+     <widget class="QLabel" name="sensorLabel1">
+      <property name="geometry"><rect><x>40</x><y>80</y><width>100</width><height>60</height></rect></property>
+      <property name="text"><string>🌡 温度</string></property>
+      <property name="styleSheet"><string>font-size:20px; color:#888;</string></property>
+     </widget>
+     <widget class="QLabel" name="sensorLabel2">
+      <property name="geometry"><rect><x>40</x><y>220</y><width>100</width><height>60</height></rect></property>
+      <property name="text"><string>💧 湿度</string></property>
+      <property name="styleSheet"><string>font-size:20px; color:#888;</string></property>
+     </widget>
+    </widget>
+   </widget>
+  </widget>
+  <widget class="QStatusBar" name="statusbar">
+   <property name="sizeGripEnabled"><bool>false</bool></property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
