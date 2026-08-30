@@ -273,7 +273,11 @@ void guard_child_restart(child_process_t *child)
 
     /* 超过最大重启次数 → 放弃, 标记为异常状态 */
     if (child->restart_count > GUARD_MAX_RESTART) {
-        LOG_ERROR("guard","%s: max restart exceeded (%d in %lds), stopped",
+        /* 注意: 格式串必须用 %d 而非 %ld —
+         * GUARD_MAX_RESTART / GUARD_RESTART_WINDOW_SEC 都是 int 常量,
+         * 在 LP64 平台 (如 x86_64 Linux) 上 long 为 8 字节而 int 为 4 字节,
+         * 若用 %ld 读取 int 实参会多读 4 字节, 属于未定义行为 (输出垃圾值)。 */
+        LOG_ERROR("guard","%s: max restart exceeded (%d in %ds), stopped",
                   child->name, GUARD_MAX_RESTART, GUARD_RESTART_WINDOW_SEC);
         child->state = PROC_ERROR;
         return;

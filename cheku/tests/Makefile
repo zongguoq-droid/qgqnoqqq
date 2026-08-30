@@ -85,8 +85,16 @@ SRC_test_can    = canbus_daemon/can_driver.c canbus_daemon/canbus_daemon.c
 SRC_test_guard  = guard_daemon/guard_daemon.c
 SRC_test_dvr    = dvr_daemon/v4l2_capture.c dvr_daemon/storage_mgr.c dvr_daemon/dvr_daemon.c
 # test_av.c 通过 #include "av_daemon.c" 访问其中的 static 函数 (scan_music),
-# 因此 av_daemon.c 不在此列出 (重复编译会导致符号重复定义)。
-SRC_test_av     =
+# 因此 av_daemon.c 本身不在此列出 (重复编译会导致符号重复定义)。
+#
+# 但必须链接 audio_core.c:
+#   av_daemon.c 的 open_track()/play_chunk()/main() 调用了
+#   audio_playback_open() / audio_mixer_set_volume() 等 audio_core.c 中的函数。
+#   C 链接器会解析整个目标文件的重定位项, 即使测试没有直接调用这些函数,
+#   只要它们被编译进可执行文件, 其引用的符号就必须有定义,
+#   否则报 undefined reference。(除非启用 -ffunction-sections + --gc-sections)
+#   audio_core.c 自身依赖 ALSA, 链接时需要 -lasound (见下方链接规则)。
+SRC_test_av     = av_daemon/audio_core.c
 
 # 转换为 .o 路径
 # $(1) = 测试名 (如 test_gps)

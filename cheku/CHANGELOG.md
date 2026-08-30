@@ -59,6 +59,16 @@
 - 根 Makefile 的 `guard_daemon` 目标用 `| grep -E "..." || true` 包裹，
   掩盖真实编译错误且编译失败也返回成功。已移除。
 
+**链接与运行时**
+- `tests/test_av` 遗漏依赖：`av_daemon.c` 调用了 `audio_playback_open()` /
+  `audio_mixer_set_volume()` 等 `audio_core.c` 中的函数，但测试的链接列表里
+  没有 `audio_core.c`。C 链接器会解析整个目标文件的重定位项，
+  即使测试未直接调用这些函数也会报 `undefined reference`，
+  导致 `test_av` 链接失败。已将 `audio_core.c` 加入 `SRC_test_av`。
+- `guard_daemon.c` 日志格式串用 `%ld` 输出 `GUARD_RESTART_WINDOW_SEC`
+  （`int` 常量）。在 LP64 平台上 `long` 为 8 字节而 `int` 为 4 字节，
+  `printf` 会多读 4 字节，属未定义行为（日志输出垃圾值）。已改为 `%d`。
+
 **脚本**
 - `start_all.sh` 步骤编号错误（标注 `[1/5]` 实际执行 7 步）。已修正为 `[1/7]`。
 - `stop_all.sh` 未停止 `guard_daemon`。已补充，并改为优先通过 guard 优雅停止全部子进程。
@@ -74,7 +84,13 @@
 
 ### Known Issues — 已知问题
 
-- `av_daemon` 暂无单元测试（依赖 ALSA 声卡，需在开发板上验证）。
+- **完整编译链接尚未在 Linux 上验证过**。本项目改造全程在 Windows 上进行，
+  而 Windows/MinGW 缺少 POSIX 头文件（`sys/socket.h`、`sys/timerfd.h` 等），
+  只能做语法检查与符号分析，无法真正编译链接。
+  首次 CI 运行（x86 编译 + 单元测试）才是真正的端到端验证，
+  届时可能暴露新的编译/链接问题。
+- `av_daemon` 的单元测试仅覆盖 `scan_music()`（音乐目录扫描）。
+  播放相关函数需真实 PCM 设备，只能在开发板验证。
 - `start_all.sh` 的 guard 托管模式尚未在开发板实测，若异常可用 `--manual` 回退。
 - `docs/architecture.md` 中的 Mermaid 架构图仍为原始设计（8 进程），
   正文已标注差异，图本身待更新。
