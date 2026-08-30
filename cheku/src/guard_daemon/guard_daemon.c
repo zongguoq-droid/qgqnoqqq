@@ -47,6 +47,10 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+
+/* 透传给子进程的配置文件路径, 由 main() 根据命令行参数设置。
+ * guard_child_start() 在 execlp 时读取它, 子进程因此与 guard 使用同一份配置。 */
+static char g_conf_path[256] = GUARD_DEFAULT_CONF_PATH;
 #include <time.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -163,8 +167,16 @@ int guard_child_start(child_process_t *child)
         /* ---- 子进程 ---- */
         /* execlp: 在 PATH 中查找 bin_path, 以该名称作为 argv[0] 启动
          * 成功: 当前进程被替换, 这行之后不会执行
-         * 失败: 返回 -1 (如文件不存在/无执行权限) */
-        execlp(child->bin_path, child->bin_path, NULL);
+         * 失败: 返回 -1 (如文件不存在/无执行权限)
+         *
+         * argv[1] 透传配置文件路径, 使子进程与 guard 使用同一份配置
+         * (等价于脚本中手动执行 "gps_daemon /etc/car_terminal/config.ini")。
+         * 路径为空时不传该参数, 子进程回退到自身内置默认配置。 */
+        if (g_conf_path[0] != '\0') {
+            execlp(child->bin_path, child->bin_path, g_conf_path, NULL);
+        } else {
+            execlp(child->bin_path, child->bin_path, NULL);
+        }
 
         /* exec 失败才走到这里 — 必须用 _exit() 而非 exit()
          * _exit(1): 直接终止进程, 不执行 atexit 回调/stdio 缓冲区刷新
@@ -501,27 +513,94 @@ static void handle_sockets(guard_context_t *ctx, int srv_ev, int cli_ev)
  *
  *  待扩展: net_daemon (网络管理), sensor_daemon (传感器采集)
  * ================================================================ */
-static void build_child_table(guard_context_t *ctx)
-{
-    const char *names[] = {
-        "gps_daemon",
-        "dvr_daemon",
-        "av_daemon",
-        "input_daemon",
-        "canbus_daemon"
-    };
+/* ================================================================
+ *  内置子进程定义表
+ *
+ *  顺序即启动顺序 (按依赖关系排列), 延迟为累积值,
+ *  避免所有进程同时启动造成 CPU/IO 尖峰 (thundering herd)。
+ *
+ *  enabled=0 的条目为预留槽位:
+ *    sensor_daemon — 功能已由 Qt UI 的 SensorThread 直接读取
+ *                    /dev/mydht11 实现, 不再需要独立进程
+ *    net_daemon    — 云端通信功能尚未部署
+ *
+ *  这两个条目仍然出现在进程表中, 以便:
+ *    1. UI 的服务健康面板能完整展示系统规划中的服务
+ *    2. 未来部署时只需在配置文件中改为 1, 无需修改代码
+ * ================================================================ */
+typedef struct {
+    const char *name;
+    int         enabled;
+    int         startup_delay_ms;
+} child_def_t;
 
-    for (int i = 0; i < 5; i++) {
+static const child_def_t g_child_defs[] = {
+    { "gps_daemon",    1,    0 },
+    { "sensor_daemon", 0,  500 },
+    { "input_daemon",  1, 1000 },
+    { "canbus_daemon", 1, 1500 },
+    { "av_daemon",     1, 2500 },
+    { "dvr_daemon",    1, 3500 },
+    { "net_daemon",    0, 4500 },
+};
+#define CHILD_DEF_COUNT  ((int)(sizeof(g_child_defs) / sizeof(g_child_defs[0])))
+
+/**
+ * @brief 加载守护进程配置, 构建子进程列表
+ *
+ * 先用内置定义表填充, 再用配置文件 [processes] 节覆盖 enabled 标志。
+ * conf_file 为 NULL 或文件不存在时, 全部使用内置默认值 (不视为错误)。
+ */
+int guard_config_load(guard_context_t *ctx, const char *conf_file)
+{
+    if (!ctx) return RET_ERR_PARAM;
+
+    /* ---- 1. 用内置定义表填充 ---- */
+    memset(ctx->children, 0, sizeof(ctx->children));
+
+    /* 防御: 内置条目数超过数组容量时截断, 避免越界 */
+    int n = CHILD_DEF_COUNT;
+    if (n > GUARD_MAX_CHILDREN) n = GUARD_MAX_CHILDREN;
+
+    for (int i = 0; i < n; i++) {
         child_process_t *c = &ctx->children[i];
 
-        snprintf(c->name, sizeof(c->name), "%s", names[i]);
+        snprintf(c->name, sizeof(c->name), "%s", g_child_defs[i].name);
         snprintf(c->bin_path, sizeof(c->bin_path),
-                 "%s%s", GUARD_BIN_PREFIX, names[i]);
+                 "%s%s", GUARD_BIN_PREFIX, g_child_defs[i].name);
 
-        c->auto_restart     = 1;       /* 异常退出自动重启 */
-        c->startup_delay_ms = i * 500; /* 错开 500ms 启动 */
+        c->auto_restart     = 1;   /* 异常退出自动重启 */
+        c->enabled          = g_child_defs[i].enabled;
+        c->startup_delay_ms = g_child_defs[i].startup_delay_ms;
+        c->pid              = 0;
+        c->state            = PROC_STOPPED;
     }
-    ctx->child_count = 5;
+    ctx->child_count = n;
+
+    /* ---- 2. 配置文件覆盖 enabled ---- */
+    if (!conf_file) return RET_OK;
+
+    config_t cfg;
+    if (config_load(&cfg, conf_file) != 0) {
+        /* 配置文件缺失是允许的: 使用内置默认值继续运行。
+         * 这里不返回错误, 否则在没有 guard.conf 的环境下会直接启动失败。 */
+        return RET_OK;
+    }
+
+    int enabled_count = 0;
+    for (int i = 0; i < ctx->child_count; i++) {
+        ctx->children[i].enabled =
+            config_get_bool(&cfg, "processes", ctx->children[i].name,
+                            ctx->children[i].enabled);
+        if (ctx->children[i].enabled) enabled_count++;
+    }
+    config_unload(&cfg);
+
+    if (enabled_count == 0) {
+        LOG_WARN("guard", "config %s: no process enabled, nothing to start",
+                 conf_file);
+    }
+    return RET_OK;
 }
 
 /**
@@ -553,10 +632,22 @@ static void build_child_table(guard_context_t *ctx)
  */
 int main(int argc, char *argv[])
 {
-    /* ---- 解析命令行参数 ---- */
+    /* ---- 解析命令行参数 ----
+     *   -f            前台运行 (不 daemonize), 方便 gdb 调试和观察日志
+     *   其他参数       视为配置文件路径, 并透传给所有子进程
+     *
+     * 用法示例:
+     *   guard_daemon                                  # 后台运行, 使用默认配置
+     *   guard_daemon /etc/car_terminal/config.ini     # 指定配置
+     *   guard_daemon /etc/car_terminal/config.ini -f  # 指定配置 + 前台
+     */
     int daemon_mode = 1;
-    if (argc >= 2 && strcmp(argv[1], "-f") == 0) {
-        daemon_mode = 0;  /* 前台模式: 方便 gdb 调试和日志观察 */
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-f") == 0) {
+            daemon_mode = 0;  /* 前台模式: 方便 gdb 调试和日志观察 */
+        } else {
+            snprintf(g_conf_path, sizeof(g_conf_path), "%s", argv[i]);
+        }
     }
 
     /* ---- 守护进程化 (daemonize) ---- */
@@ -574,15 +665,28 @@ int main(int argc, char *argv[])
     log_init(GUARD_LOG_PATH, LOG_INFO, 1024 * 1024, 3);
     LOG_INFO("guard","===== guard_daemon starting =====");
 
-    /* ---- 构建子进程表并依次启动 ---- */
-    build_child_table(&g_ctx);
+    /* ---- 构建子进程表并依次启动 ----
+     * guard_config_load 会填入 7 个进程定义, 其中 enabled=0 的
+     * 预留槽位 (sensor_daemon / net_daemon) 跳过, 不启动也不监控。 */
+    if (guard_config_load(&g_ctx, g_conf_path) != RET_OK) {
+        LOG_ERROR("guard","Failed to load child process table");
+    }
+
+    int started = 0;
     for (int i = 0; i < g_ctx.child_count; i++) {
+        if (!g_ctx.children[i].enabled) {
+            LOG_INFO("guard","Skip %s (disabled)", g_ctx.children[i].name);
+            continue;
+        }
         /* startup_delay_ms 错开: 避免所有进程同时启动造成 CPU 尖峰 */
         if (g_ctx.children[i].startup_delay_ms > 0) {
             usleep(g_ctx.children[i].startup_delay_ms * 1000);
         }
         guard_child_start(&g_ctx.children[i]);
+        started++;
     }
+    LOG_INFO("guard","Child table: %d defined, %d started",
+             g_ctx.child_count, started);
 
     /* ---- 创建 IPC Socket 服务端 ---- */
     g_ctx.server_fd = sock_create_server(GUARD_SOCKET_PATH);

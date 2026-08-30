@@ -73,6 +73,7 @@ TEST_NAMES += test_input
 TEST_NAMES += test_can
 TEST_NAMES += test_guard
 TEST_NAMES += test_dvr
+TEST_NAMES += test_av
 
 TEST_BINS = $(addprefix $(BUILD_DIR)/,$(TEST_NAMES))
 
@@ -83,6 +84,9 @@ SRC_test_input  = input_daemon/key_parser.c
 SRC_test_can    = canbus_daemon/can_driver.c canbus_daemon/canbus_daemon.c
 SRC_test_guard  = guard_daemon/guard_daemon.c
 SRC_test_dvr    = dvr_daemon/v4l2_capture.c dvr_daemon/storage_mgr.c dvr_daemon/dvr_daemon.c
+# test_av.c 通过 #include "av_daemon.c" 访问其中的 static 函数 (scan_music),
+# 因此 av_daemon.c 不在此列出 (重复编译会导致符号重复定义)。
+SRC_test_av     =
 
 # 转换为 .o 路径
 # $(1) = 测试名 (如 test_gps)
@@ -155,6 +159,18 @@ $(BUILD_DIR)/test_dvr: test_dvr.c $(call obj_for,test_dvr) | $(COMMON_LIB)
 	@$(MKDIR) $(BUILD_DIR)
 	@echo "  LD    $@"
 	@$(CC) $(CFLAGS) -o $@ $^ $(COMMON_LIB) $(LDFLAGS)
+
+# test_av 特殊之处:
+#   1. 它 #include 了 av_daemon.c, 需要 -I$(SRC_ROOT)/av_daemon 才能找到
+#      同目录下的 audio_core.h (av_daemon.c 用 #include "audio_core.h" 引用)
+#   2. audio_core.h 依赖 <alsa/asoundlib.h>, 需要 ALSA 开发库:
+#        Ubuntu/Debian: sudo apt-get install libasound2-dev
+#      链接需要 -lasound
+$(BUILD_DIR)/test_av: test_av.c $(call obj_for,test_av) | $(COMMON_LIB)
+	@$(MKDIR) $(BUILD_DIR)
+	@echo "  LD    $@"
+	@$(CC) $(CFLAGS) -I$(SRC_ROOT)/av_daemon -o $@ $^ \
+		$(COMMON_LIB) $(LDFLAGS) -lasound
 
 # ================================================================
 #  编译 src/ 下的模块源文件

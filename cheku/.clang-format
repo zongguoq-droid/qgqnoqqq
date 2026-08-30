@@ -1,0 +1,83 @@
+# ================================================================
+#  clang-format — C/C++ 代码格式化配置
+#
+#  用法:
+#    clang-format -i src/**/*.c          # 原地格式化
+#    clang-format -i --dry-run src/...   # 只检查不修改
+#
+#  ⚠ 重要提示:
+#    本项目源码中有大量人工排版的 ASCII 注释 (状态机图、分隔线、表格),
+#    clang-format 会破坏这些排版。因此本配置已关闭注释重排:
+#        ReflowComments: false
+#        SortIncludes:   false
+#    即便如此, 首次对存量代码执行 -i 仍可能产生大量 diff。
+#    建议: 仅对新增代码格式化, 或单独提交一次 "style: 全量格式化"。
+#
+#  风格来源: 对既有代码的观察
+#    - 函数体的左花括号独占一行 (Allman)
+#    - if/for/while 的左花括号留在行尾 (K&R / Attach)
+#    - 4 空格缩进, 不用 Tab
+#    - 最大行宽约 100 列
+# ================================================================
+
+Language:        Cpp
+BasedOnStyle:    LLVM
+
+# ---- 缩进 ----
+IndentWidth:     4
+TabWidth:        4
+UseTab:          Never
+ContinuationIndentWidth: 4
+
+# ---- 行宽 ----
+ColumnLimit:     100
+
+# ---- 花括号 ----
+# 自定义: 函数用 Allman, 其余 Attach
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction:           true
+  AfterClass:              false
+  AfterStruct:             false
+  AfterEnum:               false
+  AfterUnion:              false
+  AfterNamespace:          false
+  AfterControlStatement:   false
+  AfterCaseLabel:          false
+  BeforeCatch:             false
+  BeforeElse:              false
+  SplitEmptyFunction:      false
+  SplitEmptyRecord:        false
+
+# ---- 对齐 ----
+AlignConsecutiveAssignments:   true
+AlignConsecutiveDeclarations:  true
+AlignTrailingComments:         true
+AlignEscapedNewlines:          Left
+PointerAlignment:              Right      # char *p 而非 char* p
+
+# ---- 空格 ----
+SpaceBeforeParens:          ControlStatements   # if (x), 但 foo(x)
+SpaceInEmptyParentheses:    false
+SpaceAfterCStyleCast:       false
+SpacesBeforeTrailingComments: 1
+IndentCaseLabels:           true
+
+# ---- 换行 ----
+AllowShortFunctionsOnASingleLine:  None
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine:        false
+AllowShortBlocksOnASingleLine:       false
+AllowShortCaseLabelsOnASingleLine:   false
+BreakBeforeBinaryOperators:  None
+BreakBeforeTernaryOperators: true
+
+# ---- 保护既有注释排版 ----
+ReflowComments:   false
+SortIncludes:     false
+SortUsingDeclarations: false
+
+# ---- 其他 ----
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep:  2
+FixNamespaceComments: false

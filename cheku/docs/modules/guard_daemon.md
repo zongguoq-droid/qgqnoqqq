@@ -741,11 +741,15 @@ poll(pfds, nfds, 5000);               /* 最多等 5 秒 */
 
 | README 的说法 | 代码的实际实现 |
 |---|---|
-| 7 个子进程（含 sensor/net） | 实际 5 个（gps/dvr/av/input/canbus），net/sensor 是预留槽位（`GUARD_MAX_CHILDREN=8`） |
+| 启动 7 个子进程 | 进程表 7 个定义，其中 5 个启用；`sensor_daemon` / `net_daemon` 为 `enabled=0` 的预留槽位 |
 | epoll + signalfd | 实际用 poll；SIGCHLD 为默认处理 + 主循环 waitpid |
 | `handle_sigchld()` / `read_cpu_percent()` 等函数名 | 实际为 `update_status()` / `handle_sockets()`，无独立 SIGCHLD 处理函数 |
-| 配置文件加载 | 实际为 `build_child_table()` 硬编码，`guard_config_load()` 是预留接口 |
-| 测试期望 7 个子进程 | 与代码的 5 个不匹配，`make test` 第一条断言会失败 |
+
+> **已修复的历史差异**（以下两项曾是本模块的真实缺陷，现已解决）：
+> - `guard_config_load()` 曾经只有声明没有实现，而单元测试调用了它，导致链接失败。
+>   现已实现：先用内置定义表填充，再用 `config.ini` 的 `[processes]` 节覆盖 `enabled`。
+> - `GUARD_BIN_PREFIX` 曾为 `/bin/`，与部署脚本推送到的 `/usr/bin/` 不一致，
+>   会导致 `execlp` 找不到可执行文件。现已改为 `/usr/bin/`。
 
 以 `guard_daemon.h/.c` 源码和本文档为准。
 

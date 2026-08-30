@@ -75,9 +75,17 @@
 #define GUARD_LOG_PATH          "/var/log/car_terminal/guard.log"  /* 日志文件路径 */
 
 /* ---- 子进程二进制路径前缀 ----
- * 在嵌入式开发板上所有 daemon 统一放在 /bin/ 目录下。
- * 完整路径 = GUARD_BIN_PREFIX + 进程名, 例如 /bin/gps_daemon */
-#define GUARD_BIN_PREFIX        "/bin/"
+ * 在嵌入式开发板上所有 daemon 统一放在 /usr/bin/ 目录下,
+ * 与 scripts/build_and_deploy.sh 的 adb push 目标、start_all.sh 的
+ * BIN 变量保持一致 (早期版本为 "/bin/", 与部署路径不一致,
+ * 会导致 execlp 找不到可执行文件)。
+ * 完整路径 = GUARD_BIN_PREFIX + 进程名, 例如 /usr/bin/gps_daemon */
+#define GUARD_BIN_PREFIX        "/usr/bin/"
+
+/* ---- 透传给子进程的默认配置文件路径 ----
+ * 子进程 (gps_daemon 等) 与 guard_daemon 使用同一份 config.ini。
+ * 若希望子进程改用默认配置启动, 可将此宏置空或传入不存在的路径。 */
+#define GUARD_DEFAULT_CONF_PATH "/etc/car_terminal/config.ini"
 
 /* ================================================================
  *  子进程定义
@@ -92,9 +100,12 @@
 typedef struct {
     /* ---- 静态配置 ---- */
     char        name[32];           /* 进程名, 用于日志 (如 "gps_daemon") */
-    char        bin_path[256];      /* 可执行文件完整路径 (如 "/bin/gps_daemon") */
+    char        bin_path[256];      /* 可执行文件完整路径 (如 "/usr/bin/gps_daemon") */
     int         auto_restart;       /* 异常退出后是否自动重启 (1=是, 0=否) */
     int         startup_delay_ms;   /* 启动延迟 (ms): 错开启动避免资源争抢 */
+    int         enabled;            /* 是否实际启动 (1=启动, 0=仅占位不启动)
+                                     * 预留槽位 (如 net_daemon) 设为 0:
+                                     * 已定义但未实现/未部署, 不参与启动与监控 */
 
     /* ---- 运行时状态 ---- */
     pid_t       pid;                /* 子进程 PID, 0 表示未启动 */
@@ -184,13 +195,29 @@ typedef struct {
 void guard_daemonize(void);
 
 /**
- * @brief 加载守护进程配置, 构建子进程列表 (预留接口)
+ * @brief 加载守护进程配置, 构建子进程列表
  * @param ctx       守护进程上下文
- * @param conf_file 配置文件路径 (如 /etc/car_terminal/guard.conf)
+ * @param conf_file 配置文件路径 (如 /etc/car_terminal/config.ini);
+ *                  为 NULL 或文件不存在时使用内置的默认子进程表
  * @return          成功: RET_OK, 失败: 对应错误码
  *
- * 当前版本在 build_child_table() 中硬编码子进程列表,
- * 此接口预留用于未来从配置文件动态加载子进程定义。
+ * 子进程表行为:
+ *   1. 先填入内置的 7 个进程定义 (gps/sensor/input/canbus/av/dvr/net)。
+ *      其中 sensor_daemon 与 net_daemon 为预留槽位, enabled=0,
+ *      只占位不启动 (功能分别由 Qt SensorThread 与未部署的服务承担)。
+ *   2. 若 conf_file 存在, 读取其 [processes] 节覆盖各进程的 enabled:
+ *
+ *        [processes]
+ *        gps_daemon    = 1
+ *        sensor_daemon = 0
+ *        ...
+ *
+ *      键为进程名, 值为 0/1 (或 true/false/yes/no/on/off)。
+ *      未在文件中出现的进程保持内置默认值。
+ *
+ * 为什么要区分 "已定义" 和 "已启用":
+ *   让进程表同时表达 "系统有哪些服务" 与 "当前部署了哪些服务",
+ *   避免为了临时下线某个服务而删掉它的定义和监控逻辑。
  */
 int guard_config_load(guard_context_t *ctx, const char *conf_file);
 

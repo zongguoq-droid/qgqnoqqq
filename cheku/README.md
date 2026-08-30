@@ -29,8 +29,11 @@
                                                     (SocketCAN)
 
    ┌──────────────────────────────────────────────────────────┐
-   │  guard_daemon — 进程守护与心跳监控 (编译产出, 部署脚本待接入) │
+   │  guard_daemon — 进程托管: fork+exec 拉起上面 5 个进程,     │
+   │                 心跳监控 + 崩溃自动重启 (60s 内最多 5 次)   │
    └──────────────────────────────────────────────────────────┘
+                              ▲
+                    由 scripts/start_all.sh 启动
 ```
 
 **IPC 协议**：自定义二进制帧 `0xAA 0x55 | TYPE | LEN(2B) | DATA | CRC8 | 0x55`，
@@ -60,12 +63,13 @@ cheku/
 │
 ├── tests/              # 单元测试 — 全项目测试统一入口
 │   ├── Makefile        #   make -C tests 编译并运行全部测试
-│   ├── test_common.c   #   公共库测试
+│   ├── test_common.c   #   公共库测试 (log/crc/ringbuffer/protocol/socket/config/timer)
 │   ├── test_gps.c      #   NMEA 解析测试
 │   ├── test_input.c    #   按键解析测试
 │   ├── test_can.c      #   CAN 协议测试
-│   ├── test_guard.c    #   守护逻辑测试
-│   └── test_dvr.c      #   存储管理测试
+│   ├── test_guard.c    #   守护进程表测试
+│   ├── test_dvr.c      #   存储管理测试
+│   └── test_av.c       #   音乐目录扫描测试 (scan_music)
 │
 ├── config/             # 运行时配置 (config.ini)
 ├── docs/               # 文档
@@ -77,9 +81,16 @@ cheku/
 ├── scripts/            # 脚本: 编译部署、服务启停
 ├── qt_ui/              # Qt 触控界面工程 (qmake)
 │
+├── .github/workflows/  # CI: x86 编译 + 单元测试 + 静态检查
+│
 ├── Makefile            # 顶层构建脚本
+├── README.md
+├── CHANGELOG.md
+├── LICENSE             # MIT
 ├── .gitignore
 ├── .gitattributes      # 强制 LF, 防止 .sh 在 Windows 被转为 CRLF
+├── .clang-format
+├── .editorconfig
 └── build/              # 编译输出 (不入库)
 ```
 
@@ -110,9 +121,11 @@ make help       # 查看全部目标
 ```bash
 make test               # 编译并运行全部单元测试 (x86 本地)
 make -C tests test_gps  # 只运行某一个测试
+make -C tests help      # 查看可用测试
 ```
 
 > 测试程序需要在本机直接执行，因此 `make test` 固定使用本地编译器。
+> `test_av` 依赖 ALSA 开发库：Ubuntu/Debian 下 `sudo apt-get install libasound2-dev`。
 
 ### 4. 部署到开发板
 
@@ -120,13 +133,24 @@ make -C tests test_gps  # 只运行某一个测试
 bash scripts/build_and_deploy.sh   # 一键交叉编译 + adb 推送
 ```
 
+脚本会自动推导项目路径，工具链可用环境变量覆盖：
+
+```bash
+TOOLCHAIN=/opt/my-sdk bash scripts/build_and_deploy.sh
+```
+
 在开发板上：
 
 ```bash
 chmod +x /usr/bin/*.sh /usr/bin/*_daemon /usr/bin/car_ui
-start_all.sh      # 启动全部服务
-stop_all.sh       # 停止全部服务
+start_all.sh            # guard 托管模式 (推荐): 崩溃自动重启
+start_all.sh --manual   # 手动模式 (调试用): 无自动重启
+stop_all.sh             # 停止全部服务
 ```
+
+> **两种模式的区别**：guard 模式下只启动 `guard_daemon`，由它 fork+exec 拉起并监控
+> 其余 5 个进程，崩溃自动重启（60 秒窗口内最多 5 次），停止时也不会遗漏子进程。
+> 手动模式直接逐个启动 daemon，无自愈能力，仅用于调试或 guard 异常时回退。
 
 ---
 
@@ -174,10 +198,11 @@ stop_all.sh       # 停止全部服务
 
 ## 已知问题
 
-- `guard_daemon` 已实现并纳入编译，但 `scripts/start_all.sh` 与 `stop_all.sh` 尚未接入该进程。
-- `docs/architecture.md` 开头已声明：架构相比设计文档有所简化（`sensor_daemon` 被 Qt 的 `SensorThread` 替代，`net_daemon` 未运行）。
-- `scripts/` 中部分路径（项目目录、工具链路径）为硬编码，换机器需手动调整。
-- `dvr_daemon` 的 `v4l2_capture.h` 等模块暂无独立单元测试（测试通过 `tests/test_dvr.c` 覆盖存储管理部分）。
+- `start_all.sh` 的 **guard 托管模式尚未在开发板实测**。若异常，用 `--manual` 回退到手动启动模式，并查看 `/var/log/car_terminal/guard.log`。
+- `docs/architecture.md` 中的 Mermaid 架构图仍为原始设计（8 进程），正文已标注差异，图本身待更新。
+- `av_daemon` 的单元测试仅覆盖 `scan_music()`（音乐目录扫描）。播放相关函数需真实 PCM 设备，只能在开发板验证。
+- `dvr_daemon` 的 V4L2 采集部分无独立单元测试，`tests/test_dvr.c` 只覆盖存储管理逻辑。
+- `scripts/` 部分路径仍假设开发板目录布局（`/usr/bin`、`/etc/car_terminal`），可通过环境变量覆盖。
 
 ---
 

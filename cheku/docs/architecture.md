@@ -1,8 +1,28 @@
-> **注意**: 本文档为初始架构设计。实际实现有所简化:
-> - sensor_daemon 已由 Qt SensorThread (QThread 直读 /dev/mydht11) 替代
-> - net_daemon 未实际运行
-> - 实际运行 5 个后台进程 + 1 个 Qt UI (含 SensorThread)
-> - 详细实现状态见 docs/调试问题记录.md 和 docs/学习文档.md
+> **注意**: 本文档为**初始架构设计**。实际实现有所简化，请以源码为准:
+> - **sensor_daemon 已由 Qt SensorThread 替代** (QThread 直读 `/dev/mydht11`)
+> - **net_daemon 未实际部署** (云端通信功能尚未实现)
+> - 实际运行 **5 个守护进程 + 1 个 Qt UI** (UI 内含 SensorThread)
+> - 进程表仍保留 7 个定义，`sensor_daemon` 与 `net_daemon` 为 `enabled=0`
+>   的预留槽位，由 `config.ini` 的 `[processes]` 节控制，详见下文"进程启停表"
+> - **进程由 `guard_daemon` 统一托管**: 它 fork+exec 拉起全部子进程并监控，
+>   崩溃自动重启 (60 秒窗口内最多 5 次)。启动脚本为 `scripts/start_all.sh`
+> - 详细实现状态见 [调试问题记录.md](调试问题记录.md) 和 [学习文档.md](学习文档.md)
+
+### 进程启停表 (当前实际状态)
+
+`guard_daemon` 的进程表共 7 项，其中 5 项默认启用:
+
+| 进程 | 默认 | 说明 |
+|---|---|---|
+| `gps_daemon` | 启用 | GPS 定位 |
+| `sensor_daemon` | **预留** | 功能由 Qt SensorThread 承担 |
+| `input_daemon` | 启用 | 按键输入 |
+| `canbus_daemon` | 启用 | CAN 总线 |
+| `av_daemon` | 启用 | 音频播放 |
+| `dvr_daemon` | 启用 | 行车记录 |
+| `net_daemon` | **预留** | 云端通信，未部署 |
+
+可在 `config/config.ini` 的 `[processes]` 节中修改启停，无需改代码。
 
 # 智能车载终端 - 架构设计文档
 
