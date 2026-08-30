@@ -1,0 +1,103 @@
+# ================================================================
+#  GitHub Actions — 持续集成
+#
+#  ⚠ 位置要求:
+#    GitHub Actions 只识别「仓库根目录」的 .github/workflows/*.yml。
+#    本文件必须放在仓库根的 .github/workflows/ 下。
+#    若项目代码位于子目录 (本项目为 cheku/), workflow 内部需自行 cd 进去。
+#
+#  触发: push / PR 到 main 分支
+#
+#  为什么只做 x86 本地编译:
+#    本项目面向 ARM (i.MX6ULL) 交叉编译, 工具链来自开发板厂商的私有 SDK,
+#    无法在公共 CI 上获取。因此 CI 使用 HOST=1 本地编译来验证:
+#      - 代码在标准 POSIX 环境下能否编译通过 (可捕获大部分语法/类型错误)
+#      - 单元测试能否通过
+#      - 静态检查有无新增告警
+#    交叉编译的正确性仍需在开发板上验证 (见 scripts/build_and_deploy.sh)。
+# ================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# 项目代码位于仓库的 cheku/ 子目录
+env:
+  PROJECT_DIR: cheku
+
+jobs:
+  build-and-test:
+    name: x86 Build + Unit Tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ env.PROJECT_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          # libasound2-dev : av_daemon 使用 ALSA (-lasound)
+          sudo apt-get install -y build-essential libasound2-dev
+
+      - name: Build common library
+        run: make common HOST=1
+
+      - name: Build all modules
+        run: make HOST=1
+
+      - name: Show build artifacts
+        run: ls -l build/bin/
+
+      - name: Run unit tests
+        run: make test
+
+  static-analysis:
+    name: Static Analysis (cppcheck)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ env.PROJECT_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        # 说明:
+        #   --enable=warning,performance,portability  启用常用检查
+        #   --inline-suppr                            支持代码内 // cppcheck-suppress
+        #   --error-exitcode=0                        当前仅报告不阻断
+        #     (存量代码告警较多, 先作为可见性手段; 清理后可改为 1 强制拦截)
+        run: |
+          cppcheck \
+            --enable=warning,performance,portability \
+            --inline-suppr \
+            --std=c99 \
+            --platform=unix64 \
+            --suppress=missingIncludeSystem \
+            -I include \
+            -I src/common \
+            src tests \
+            2>&1 | tee cppcheck-report.txt || true
+
+      - name: Upload cppcheck report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppcheck-report
+          path: ${{ env.PROJECT_DIR }}/cppcheck-report.txt
+          if-no-files-found: ignore
