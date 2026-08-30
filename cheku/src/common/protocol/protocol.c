@@ -46,8 +46,8 @@
  *   5. 环形缓冲区与状态机的配合
  */
 
-#include "protocol.h"
-#include "../crc/crc8.h"
+#include "protocol/protocol.h"
+#include "crc/crc8.h"
 
 #include <string.h>   /* memcpy */
 

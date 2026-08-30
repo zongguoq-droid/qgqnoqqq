@@ -59,27 +59,20 @@ modules.builtin
 Module.symvers
 
 # ---- 可执行程序 ----
-# 各守护进程 (由 Makefile 输出到 build/bin/, 源码目录内同名文件也为产物)
-gps_daemon
-dvr_daemon
-av_daemon
-input_daemon
-canbus_daemon
-guard_daemon
-net_daemon
-sensor_daemon
-
-# 测试程序 (由 make test 生成)
-test_common
-test_dvr
-test_gps
-test_input
-test_canbus
-test_guard
+# 注意: 各守护进程可执行文件 (gps_daemon / dvr_daemon / av_daemon / ...)
+#       与测试程序 (test_common / test_gps / test_input / ...) 均由 Makefile
+#       输出到 build/bin/ 或各模块 build/ 目录内,
+#       已被上方的 build/ 与 **/build/ 规则覆盖, 此处无需重复声明。
+#
+#       ⚠ 切勿在此写 "gps_daemon" 这类裸文件名: gitignore 的裸名规则会
+#         匹配任意层级的同名"目录", 从而连带忽略 src/gps_daemon/ 源码目录
+#         本身, 导致整个模块无法提交 (本项目曾因此丢失 6 个 daemon 源码)。
 
 # Qt 界面可执行程序 (qt_ui.pro: TARGET = car_ui)
-qt_ui/car_ui
-car_ui
+# 该产物生成在源码目录内 (不在 build/), 必须显式忽略;
+# 用前导 / 锁定到仓库根与 qt_ui/, 避免误伤同名目录
+/qt_ui/car_ui
+/car_ui
 
 
 # ================================================================

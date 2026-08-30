@@ -36,9 +36,9 @@
  *   5. send 返回值处理: 部分发送 (短写) 问题
  */
 
-#include "unix_socket.h"
-#include "../protocol/protocol.h"
-#include "../log/log.h"
+#include "socket/unix_socket.h"
+#include "protocol/protocol.h"
+#include "log/log.h"
 
 #include <stdio.h>          /* perror */
 #include <stdlib.h>         /* NULL */

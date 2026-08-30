@@ -26,15 +26,15 @@
 #include <sys/wait.h>
 #include <assert.h>
 
-/* 包含公共库头文件 */
-#include "../common.h"
-#include "../log/log.h"
-#include "../crc/crc8.h"
-#include "../ringbuffer/ringbuffer.h"
-#include "../config/config.h"
-#include "../protocol/protocol.h"
-#include "../socket/unix_socket.h"
-#include "../timer/timer.h"
+/* 包含公共库头文件 (统一从 include/ 根开始写, 由 -Iinclude 解析) */
+#include "common.h"
+#include "log/log.h"
+#include "crc/crc8.h"
+#include "ringbuffer/ringbuffer.h"
+#include "config/config.h"
+#include "protocol/protocol.h"
+#include "socket/unix_socket.h"
+#include "timer/timer.h"
 
 /* ---- 测试计数器 ---- */
 static int g_tests_passed = 0;

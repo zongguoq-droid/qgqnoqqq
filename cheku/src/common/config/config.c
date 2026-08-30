@@ -25,7 +25,7 @@
  *   5. 大小写不敏感比较 (strcasecmp)
  */
 
-#include "config.h"
+#include "config/config.h"
 #include <stdio.h>      /* FILE, fopen, fgets, fprintf */
 #include <stdlib.h>     /* malloc, free, strtol, strtod */
 #include <string.h>     /* strlen, strncpy, strchr, strrchr */

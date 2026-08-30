@@ -3,11 +3,22 @@
 #
 #  使用方式:
 #   make                    — 编译全部模块 (ARM 交叉编译)
+#   make HOST=1             — 编译全部模块 (x86 本地)
 #   make common             — 只编译 common 公共库
-#   make gps / sensor / ... — 只编译指定模块
-#   make test               — 编译并运行公共库测试
+#   make gps / can / ...    — 只编译指定模块
+#   make test               — 编译并运行全部单元测试 (tests/)
 #   make clean              — 清理全部编译产物
 #   make deploy             — 打包部署文件到 build/deploy/
+#
+#  目录约定:
+#    src/      各守护进程与公共库的实现 (.c)
+#    include/  公共头文件 (.h), 所有模块通过 -Iinclude 引用
+#    tests/    全项目单元测试, 由 tests/Makefile 统一管理
+#    config/   运行时配置文件
+#    docs/     设计文档与各模块学习文档
+#    scripts/  编译 / 部署 / 启停脚本
+#    qt_ui/    Qt 触控界面工程
+#    build/    编译输出 (已 gitignore)
 #
 #  交叉编译 (环境变量方式):
 #   export ARCH=arm
@@ -37,8 +48,10 @@ CP            = cp -r
 
 # ---- 目录 ----
 SRC_DIR       = src
+INC_DIR       = include
 COMMON_DIR    = $(SRC_DIR)/common
 COMMON_LIB    = $(COMMON_DIR)/lib/libcarcommon.a
+TESTS_DIR     = tests
 BUILD_DIR     = build
 BIN_DIR       = $(BUILD_DIR)/bin
 LOG_DIR       = $(BUILD_DIR)/log
@@ -54,7 +67,7 @@ MODULES += dvr_daemon
 # ---- 传递给子 Makefile 的变量 ----
 MAKE_VARS  = CROSS_COMPILE=$(CROSS_COMPILE)
 MAKE_VARS += COMMON_LIB=$(CURDIR)/$(COMMON_LIB)
-MAKE_VARS += COMMON_INC=$(CURDIR)/$(SRC_DIR)
+MAKE_VARS += INC_DIR=$(CURDIR)/$(INC_DIR)
 MAKE_VARS += OUTPUT_DIR=$(CURDIR)/$(BIN_DIR)
 
 # ================================================================
@@ -85,7 +98,7 @@ common:
 .PHONY: guard_daemon
 guard_daemon: common
 	@echo ">>> [guard_daemon]"
-	@$(MAKE) -C $(SRC_DIR)/guard_daemon $(MAKE_VARS) 2>&1 | grep -E "CC|LD|built|Error|error" || true
+	@$(MAKE) -C $(SRC_DIR)/guard_daemon $(MAKE_VARS)
 
 
 .PHONY: gps_daemon
@@ -126,19 +139,18 @@ dvr:    dvr_daemon
 # ================================================================
 #  测试
 # ================================================================
+# 单元测试已集中到 tests/ 目录, 由 tests/Makefile 统一编译与运行。
+# 注意: 测试程序需要在本机直接执行, 因此固定使用本地编译器 (HOST=1);
+#       若跟随全局 HOST=0 走 ARM 交叉编译器, 产出的二进制无法在 x86 上运行。
 .PHONY: test
 test: common
-	@echo ">>> 运行公共库测试..."
-	@$(MAKE) -C $(COMMON_DIR) test
+	@echo ">>> 运行全部单元测试..."
+	@$(MAKE) -C $(TESTS_DIR) test \
+		HOST=1 \
+		COMMON_LIB=$(CURDIR)/$(COMMON_LIB)
 
 .PHONY: test-all
 test-all: test
-	@for mod in $(MODULES); do \
-		if [ -f $(SRC_DIR)/$$mod/Makefile ]; then \
-			echo ">>> Testing $$mod ..."; \
-			$(MAKE) -C $(SRC_DIR)/$$mod $(MAKE_VARS) test 2>/dev/null || true; \
-		fi \
-	done
 
 # ================================================================
 #  清理
@@ -150,6 +162,7 @@ clean:
 	@for mod in $(MODULES); do \
 		$(MAKE) -C $(SRC_DIR)/$$mod clean 2>/dev/null || true; \
 	done
+	@$(MAKE) -C $(TESTS_DIR) clean 2>/dev/null || true
 	@$(RM) -r $(BUILD_DIR)
 	@echo "  清理完成."
 
@@ -190,8 +203,7 @@ help:
 	@echo "  make av           — 只编译 av_daemon"
 	@echo "  make dvr          — 只编译 dvr_daemon"
 	@echo "  make guard        — 只编译 guard_daemon"
-	@echo "  make test         — 运行公共库测试"
-	@echo "  make test-all     — 运行全部模块测试"
+	@echo "  make test         — 运行全部单元测试 (tests/)"
 	@echo "  make clean        — 清理全部编译产物"
 	@echo "  make deploy       — 打包部署文件"
 	@echo "  make help         — 帮助"

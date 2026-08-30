@@ -33,7 +33,7 @@
  *   3. CRC 多项式的选择: 不同多项式检错能力不同
  */
 
-#include "crc8.h"
+#include "crc/crc8.h"
 
 /**
  * @brief CRC8 查找表 (预先计算, 编译期确定)

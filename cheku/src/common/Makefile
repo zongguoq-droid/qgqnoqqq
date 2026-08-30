@@ -4,8 +4,9 @@
 # 支持两种编译模式:
 #   make              — 编译静态库 libcarcommon.a (默认推荐)
 #   make shared       — 编译动态库 libcarcommon.so
-#   make test         — 编译并运行测试程序
 #   make clean        — 清理编译产物
+#
+# 单元测试已集中到仓库根目录 tests/, 由 tests/Makefile 统一管理
 #
 # 交叉编译:
 #   make CROSS_COMPILE=arm-buildroot-linux-gnueabihf-
@@ -31,10 +32,13 @@ MKDIR   = mkdir -p
 # -g:              包含调试符号
 # -fPIC:           位置无关代码 (静态库和动态库都需要, 方便以后切换)
 # -ffunction-sections -fdata-sections: 将每个函数/数据放入独立段
-# -I.. :           包含 common/ 目录 (访问 common.h)
+#
+# 公共头文件已统一迁移到 include/ 目录, 本模块源码通过 -I 引用:
+#   #include "log/log.h"  /  #include "common.h"  /  #include "crc/crc8.h"
+INC_DIR ?= ../../include
 CFLAGS  = -Wall -Wextra -std=gnu99 -Os -g -fPIC
 CFLAGS  += -ffunction-sections -fdata-sections
-CFLAGS  += -I..
+CFLAGS  += -I$(INC_DIR)
 
 # 链接选项:
 # -Wl,--gc-sections: 链接时移除未使用的段 (配合 -ffunction-sections)
@@ -62,9 +66,9 @@ SRCS += timer/timer.c
 OBJS = $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRCS))
 
 # ---- 库名称 ----
+# 注意: 单元测试已迁至仓库根目录 tests/, 由 tests/Makefile 统一管理
 STATIC_LIB  = $(LIB_DIR)/libcarcommon.a
 SHARED_LIB  = $(LIB_DIR)/libcarcommon.so
-TEST_BIN    = $(BUILD_DIR)/test_common
 
 # ================================================================
 #  默认目标: 编译静态库
@@ -75,8 +79,8 @@ all: $(STATIC_LIB)
 	@echo "  libcarcommon.a built successfully!"
 	@echo "  Static library: $(STATIC_LIB)"
 	@echo "  Objects: $(OBJS)"
-	@echo "  Use 'make test' to build and run tests."
 	@echo "  Use 'make shared' for shared library."
+	@echo "  Use 'make -C ../../tests test' to run unit tests."
 	@echo "================================================"
 
 # ---- 编译静态库 ----
@@ -112,27 +116,6 @@ $(BUILD_DIR)/%.o: %.c
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 # ================================================================
-#  测试程序
-# ================================================================
-.PHONY: test
-test: $(TEST_BIN)
-	@echo "================================================"
-	@echo "  Running common library tests..."
-	@echo "================================================"
-	@$(TEST_BIN)
-
-# ---- 编译测试程序 ----
-# 测试程序链接静态库
-$(TEST_BIN): test/test_common.c $(STATIC_LIB)
-	@$(MKDIR) $(BUILD_DIR)
-	@echo "  CC    test_common"
-	@$(CC) $(CFLAGS) -o $@ test/test_common.c \
-		-L$(LIB_DIR) -lcarcommon $(LDFLAGS_TEST)
-	# -L$(LIB_DIR): 指定库搜索路径
-	# -lcarcommon:  链接 libcarcommon.a (lib 前缀和 .a 后缀自动添加)
-	# $(LDFLAGS_TEST): 额外的链接选项 (-lpthread -lrt)
-
-# ================================================================
 #  清理
 # ================================================================
 .PHONY: clean
@@ -149,7 +132,6 @@ help:
 	@echo "Common Library Build Targets:"
 	@echo "  make              - Build static library (libcarcommon.a)"
 	@echo "  make shared       - Build shared library (libcarcommon.so)"
-	@echo "  make test         - Build and run test program"
 	@echo "  make clean        - Remove build artifacts"
 	@echo "  make help         - Show this help"
 	@echo ""

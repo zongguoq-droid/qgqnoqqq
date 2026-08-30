@@ -31,7 +31,7 @@
  *   4. 嵌入式性能: 避免除法、避免动态分配、预分配固定大小
  */
 
-#include "ringbuffer.h"
+#include "ringbuffer/ringbuffer.h"
 #include <stdlib.h>   /* malloc, free */
 #include <string.h>   /* memcpy */
 #include <stdint.h>

@@ -1,0 +1,55 @@
+# ================================================================
+#  智能车载终端 (cheku) — .gitattributes
+#
+#  作用: 规范换行符与文件类型识别, 避免跨平台协作时的经典问题。
+#
+#  为什么需要它:
+#    项目在 Windows 上开发、推送到 Linux 开发板执行。
+#    若 .sh 脚本在 checkout 时被 Git 自动转换为 CRLF,
+#    开发板上执行会报错:
+#        /bin/sh^M: bad interpreter: No such file or directory
+#    下面强制 .sh / Makefile 等在仓库与工作区一律使用 LF。
+# ================================================================
+
+# ---- 默认: 让 Git 自动识别文本/二进制, 仓库内统一存为 LF ----
+* text=auto eol=lf
+
+# ---- 脚本与构建文件: 必须为 LF (开发板直接执行) ----
+*.sh        text eol=lf
+Makefile    text eol=lf
+*.mk        text eol=lf
+configure   text eol=lf
+*.pro       text eol=lf
+*.pri       text eol=lf
+
+# ---- 源码: 统一 LF ----
+*.c         text eol=lf
+*.h         text eol=lf
+*.cpp       text eol=lf
+*.hpp       text eol=lf
+
+# ---- 配置与文档 ----
+*.ini       text eol=lf
+*.md        text eol=lf
+*.txt       text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.xml       text eol=lf
+
+# ---- Qt 相关 ----
+*.ui        text eol=lf
+*.qrc       text eol=lf
+*.ts        text eol=lf
+
+# ---- 二进制文件: 禁止 Git 做任何换行转换或 diff ----
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.bmp       binary
+*.pdf       binary
+*.zip       binary
+*.gz        binary
+*.so        binary
+*.a         binary

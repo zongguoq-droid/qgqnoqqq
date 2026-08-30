@@ -24,8 +24,8 @@
  *   7. 互斥锁 pthread_mutex - 线程安全基础
  */
 
-#include "log.h"
-#include "../common.h"       /* LOG_BUF_SIZE, ret_code_t, 公共类型 */
+#include "log/log.h"
+#include "common.h"                /* LOG_BUF_SIZE, ret_code_t, 公共类型 */
 
 #include <stdio.h>          /* FILE, fopen, fclose, fprintf, fflush */
 #include <stdlib.h>         /* malloc, free, getenv */
