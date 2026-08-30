@@ -1,0 +1,174 @@
+# ================================================================
+#  智能车载终端 (cheku) — .gitignore
+#
+#  忽略三类文件:
+#    1. 编译产物 (build/ 目录、*.o、静态/动态库、可执行文件)
+#    2. Qt Creator / qmake 生成的工程文件与用户配置 (*.pro.user 含个人绝对路径)
+#    3. 编辑器与系统垃圾文件 (*.swp、.DS_Store、core dump 等)
+#
+#  注意: 以下内容必须保留版本控制, 请勿忽略:
+#    - 根 Makefile / src/*/Makefile  (手写构建脚本)
+#    - config/config.ini            (默认配置模板)
+#    - docs/ 与各模块 *.md          (学习文档)
+#    - src/*/test/*.c               (单元测试源码)
+# ================================================================
+
+
+# ================================================================
+#  1. 编译产物
+# ================================================================
+
+# ---- 顶层构建输出目录 ----
+# 由根 Makefile 创建: build/bin (可执行文件)、build/log、build/deploy
+build/
+
+# ---- 各模块构建目录 ----
+# 每个 daemon 及 common/ 的 Makefile 都在自身目录下生成 build/
+# (匹配任意层级, 顶层 build/ 同样被覆盖)
+**/build/
+
+# ---- 公共库输出 ----
+# common/Makefile: STATIC_LIB = lib/libcarcommon.a, SHARED_LIB = lib/libcarcommon.so
+src/common/lib/
+
+# ---- 目标文件与依赖文件 ----
+*.o
+*.obj
+*.d
+*.lo
+*.slo
+
+# ---- 静态库 / 动态库 ----
+*.a
+*.la
+*.lai
+*.so
+*.so.*
+*.dll
+*.dylib
+
+# ---- 内核模块编译产物 (驱动开发时使用) ----
+*.ko
+*.mod
+*.mod.c
+*.cmd
+*.order
+*.symvers
+.tmp_versions/
+modules.builtin
+Module.symvers
+
+# ---- 可执行程序 ----
+# 各守护进程 (由 Makefile 输出到 build/bin/, 源码目录内同名文件也为产物)
+gps_daemon
+dvr_daemon
+av_daemon
+input_daemon
+canbus_daemon
+guard_daemon
+net_daemon
+sensor_daemon
+
+# 测试程序 (由 make test 生成)
+test_common
+test_dvr
+test_gps
+test_input
+test_canbus
+test_guard
+
+# Qt 界面可执行程序 (qt_ui.pro: TARGET = car_ui)
+qt_ui/car_ui
+car_ui
+
+
+# ================================================================
+#  2. Qt / Qt Creator 生成物
+# ================================================================
+
+# ---- 用户专属配置 (含个人机器绝对路径, 切勿提交) ----
+*.pro.user
+*.pro.user.*
+*.pro.autosave
+
+# ---- qmake 生成的构建脚本 ----
+# 注意: 只忽略 qt_ui/ 下由 qmake 生成的 Makefile,
+#       根 Makefile 与各子模块 Makefile 是手写的, 必须保留
+/qt_ui/Makefile
+/qt_ui/Makefile.*
+qt_ui/.qmake.stash
+qt_ui/.qmake.cache
+
+# ---- moc / uic / rcc 生成代码 ----
+moc_*.cpp
+moc_*.h
+moc_predefs.h
+qrc_*.cpp
+ui_*.h
+*.qm
+*.qmlc
+*.jsc
+
+# ---- Qt Creator 会话与配置 ----
+*.autosave
+CMakeLists.txt.user
+qtcsettings.cmake
+
+
+# ================================================================
+#  3. 编辑器 / IDE / 系统垃圾
+# ================================================================
+
+# ---- VS Code ----
+# 含个人绝对路径 (如 C:/Users/<用户名>/Desktop/LINUX/Linux-4.9.88),
+# 不同开发者路径不同, 提交会互相覆盖
+.vscode/
+*.code-workspace
+
+# ---- Vim / Emacs ----
+*~
+*.swp
+*.swo
+*.bak
+
+# ---- 代码索引工具 (ctags / cscope / gtags / clangd) ----
+tags
+TAGS
+cscope.*
+GTAGS
+GRTAGS
+GPATH
+.clangd/
+.cache/
+compile_commands.json
+
+# ---- 操作系统 ----
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ---- 日志与运行时输出 ----
+*.log
+*.log.*
+/record/
+/tmp/dvr_preview.jpg
+
+# ---- 调试与崩溃转储 ----
+core
+core.*
+*.core
+vgcore.*
+callgrind.out.*
+*.gch
+*.pch
+
+# ---- 补丁与版本控制残留 ----
+*.orig
+*.rej
+*.patch
+*.diff
